@@ -45,20 +45,16 @@ def run():
     for i, (dataset_key, dataset_info) in enumerate(pending, 1):
         print(f"\n[{i}/{len(pending)}] Fetching {dataset_info['name']}...")
 
-        try:
-            response = get(dataset_info["url"], timeout=120)
-            response.raise_for_status()
+        response = get(dataset_info["url"], timeout=120)
+        response.raise_for_status()
 
-            content = response.text
-            row_count = content.count("\n") - 1
+        content = response.text
+        row_count = content.count("\n") - 1
 
-            save_raw_file(content, f"unwto_{dataset_key}", extension="csv")
-            print(f"    Saved {row_count:,} records")
+        save_raw_file(content, f"unwto_{dataset_key}", extension="csv")
+        print(f"    Saved {row_count:,} records")
 
-            completed.add(dataset_key)
-            save_state("unwto_tourism", {"completed": list(completed)})
-
-        except Exception as e:
-            print(f"    Error: {e}")
+        completed.add(dataset_key)
+        save_state("unwto_tourism", {"completed": list(completed)})
 
     print(f"\nIngested {len(completed)} datasets")
