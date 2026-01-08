@@ -1,60 +1,28 @@
 """Ingest tourism data from UNdata (UNWTO source).
 
-UNdata provides UNWTO tourism statistics in CSV format.
+UNdata provides UNWTO tourism statistics via Statistical Yearbook CSV files.
 No authentication required.
+
+Data contains tourist/visitor arrivals and tourism expenditure by country and year.
 """
 
-from subsets_utils import get, save_raw_file, load_state, save_state
+from subsets_utils import get, save_raw_file
 
-# UNdata tourism datasets (UNWTO data)
-# These are direct download links from UNdata
-DATASETS = {
-    "arrivals": {
-        "url": "https://data.un.org/Handlers/DownloadHandler.ashx?DataFilter=group_code:580&Format=csv&c=2,3,4,5,6,7&s=_crEngNameOrderBy:asc,yr:desc",
-        "name": "International Tourist Arrivals",
-        "desc": "Tourist arrivals by country and year",
-    },
-    "receipts": {
-        "url": "https://data.un.org/Handlers/DownloadHandler.ashx?DataFilter=group_code:600&Format=csv&c=2,3,4,5,6,7&s=_crEngNameOrderBy:asc,yr:desc",
-        "name": "Tourism Receipts",
-        "desc": "International tourism receipts in USD millions",
-    },
-    "expenditure": {
-        "url": "https://data.un.org/Handlers/DownloadHandler.ashx?DataFilter=group_code:610&Format=csv&c=2,3,4,5,6,7&s=_crEngNameOrderBy:asc,yr:desc",
-        "name": "Tourism Expenditure",
-        "desc": "International tourism expenditure in USD millions",
-    },
-}
+# UNdata Statistical Yearbook tourism dataset
+# SYB67 (November 2024) contains arrivals and expenditure in a single file
+TOURISM_URL = "https://data.un.org/_Docs/SYB/CSV/SYB67_176_202411_Tourist-Visitors%20Arrival%20and%20Expenditure.csv"
 
 
 def run():
-    """Fetch all UNWTO tourism datasets from UNdata."""
+    """Fetch UNWTO tourism data from UNdata Statistical Yearbook."""
     print("Fetching UNWTO Tourism data from UNdata...")
 
-    state = load_state("unwto_tourism")
-    completed = set(state.get("completed", []))
+    print("  Downloading Statistical Yearbook tourism data (SYB67)...")
+    response = get(TOURISM_URL, timeout=120)
+    response.raise_for_status()
 
-    pending = [(k, v) for k, v in DATASETS.items() if k not in completed]
+    content = response.text
+    row_count = content.count("\n") - 1
 
-    if not pending:
-        print("All datasets up to date")
-        return
-
-    print(f"  Datasets to fetch: {len(pending)}")
-
-    for i, (dataset_key, dataset_info) in enumerate(pending, 1):
-        print(f"\n[{i}/{len(pending)}] Fetching {dataset_info['name']}...")
-
-        response = get(dataset_info["url"], timeout=120)
-        response.raise_for_status()
-
-        content = response.text
-        row_count = content.count("\n") - 1
-
-        save_raw_file(content, f"unwto_{dataset_key}", extension="csv")
-        print(f"    Saved {row_count:,} records")
-
-        completed.add(dataset_key)
-        save_state("unwto_tourism", {"completed": list(completed)})
-
-    print(f"\nIngested {len(completed)} datasets")
+    save_raw_file(content, "tourism_arrivals_expenditure", extension="csv")
+    print(f"  Saved {row_count:,} records")
